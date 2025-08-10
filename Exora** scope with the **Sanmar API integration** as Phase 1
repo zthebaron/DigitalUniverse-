@@ -1,0 +1,188 @@
+**Exora** scope with the **Sanmar API integration** as Phase 1, and  **product field mapping table** from the Sandbar scope directly into Step 2 of Phase 1 so  dev team has the schema alignment upfront. 
+---
+
+**Subject:** Scope of Work – Exora ↔ Vendor Catalog Integrations
+**Phase 1: Sanmar API Integration (2–4 Weeks)**
+
+**To:** DigitalBoutique.ai Agency Dev Team
+**From:** Tim de Vallee
+
+---
+
+## **Project Overview**
+
+This initiative will connect the **Exora.Inc** platform with multiple vendor product data sources—starting with **Sanmar API integration**—to automate importing, enriching, and displaying full catalog data (products, prices, images, variations) within Exora.
+
+Work will be staged on **[https://stage.exora.inc](https://stage.exora.inc)** only, with production deployment occurring after successful QA and acceptance.
+
+---
+
+## **Roadmap & Phases**
+
+The project will proceed in the following sequence:
+
+### **Phase 1 – Sanmar API Integration (2–4 weeks)**
+
+**Goal:** Create a fully automated Sanmar → Exora catalog sync system, with AI-assisted data enrichment, logging, and admin controls.
+
+---
+
+#### **Step 1: API Connectivity & Authentication**
+
+* Obtain Sanmar API credentials (key, secret, endpoint URLs).
+* Configure secure storage in `.env` (never hardcode).
+* Establish authenticated requests for product, category, inventory, and media endpoints.
+* Implement basic connectivity test and error logging for failed auth.
+
+---
+
+#### **Step 2: Data Retrieval & Schema Mapping**
+
+* Identify all relevant Sanmar endpoints:
+
+  * Product details (title, description, brand, category, attributes)
+  * Pricing data (base price, sale price, currency)
+  * Inventory data (stock levels, warehouse info)
+  * Images/media metadata
+* Create `/docs/data-mapping.md` mapping Sanmar → Exora fields.
+* Implement mapping layer (JSON/YAML config-driven).
+* Handle multiple categories, nested attributes, and variant combinations.
+
+**Proposed Sanmar → Exora Field Mapping Table:**
+
+| Sanmar Field         | Exora Field           | Type   | Notes                                        |
+| -------------------- | --------------------- | ------ | -------------------------------------------- |
+| `Id`                 | `product_id`          | string | Primary key for upserts                      |
+| `Sku`                | `sku`                 | string | Unique per variant                           |
+| `Name`               | `title`               | string | Title normalization via AI                   |
+| `DescriptionHtml`    | `description_html`    | HTML   | Sanitize & allow basic tags                  |
+| `Brand`              | `brand`               | string |                                              |
+| `CategoryPath`       | `category`            | array  | Split by `/`; auto-map unknowns via AI       |
+| `Tags`               | `tags`                | array  | Derived from attributes where applicable     |
+| `BasePrice`          | `price`               | number | Currency configurable                        |
+| `SalePrice`          | `sale_price`          | number | Optional                                     |
+| `InventoryQuantity`  | `inventory_qty`       | number |                                              |
+| `VariantId`          | `variant_id`          | string | Empty for simple products                    |
+| `Color`              | `attributes.color`    | string |                                              |
+| `Size`               | `attributes.size`     | string |                                              |
+| `Material`           | `attributes.material` | string | Optional                                     |
+| `Images[]`           | `image_urls[]`        | array  | Download → CDN; generate alt text if missing |
+| `Barcode`            | `barcode`             | string | Optional                                     |
+| `Slug` (if provided) | `slug`                | string | Else generate from title                     |
+| `Msrp`               | `msrp`                | number | Optional                                     |
+| `CountryOfOrigin`    | `country_of_origin`   | string | Optional                                     |
+| `Hazmat`             | `hazmat`              | bool   | Optional                                     |
+
+---
+
+#### **Step 3: Import Pipeline Development**
+
+* Build modular import service:
+
+  * **Full Import**: fetch and insert/update all products.
+  * **Delta Import**: fetch and update only changed products (based on `lastUpdated` timestamps).
+* Idempotent updates (no duplicate records).
+* Handle deletions (products no longer in Sanmar data should be flagged or removed per config).
+* Apply AI-assisted title normalization, category mapping, SEO meta generation, and alt text creation.
+* Log all AI decisions with before/after states.
+
+---
+
+#### **Step 4: Media Handling**
+
+* Download all images from Sanmar’s URLs.
+* Store in our CDN or staging media library.
+* Generate optimized variants (e.g., WebP, multiple resolutions).
+* Map variant-specific images when provided.
+* AI-generate alt text for images missing metadata.
+
+---
+
+#### **Step 5: Scheduling & Automation**
+
+* Nightly **full sync** (configurable cron in `.env`).
+* Hourly **delta sync** (if supported by API timestamps).
+* Manual triggers in admin UI with **dry-run mode** (no DB write, only logs/report).
+* Error handling: retry with exponential backoff for transient failures.
+
+---
+
+#### **Step 6: Admin Configuration Panel**
+
+* Fields:
+
+  * API credentials (key/secret)
+  * Sync schedule controls (enable/disable, cron string)
+  * Mapping file upload
+  * AI features on/off toggles
+  * Manual run trigger & dry-run option
+* Role-based access control: only admins can modify.
+
+---
+
+#### **Step 7: Logging, Reporting, & Alerts**
+
+* Structured JSON logs for each import cycle.
+* Run report after each import:
+
+  * Count of new, updated, skipped, deleted items
+  * Errors encountered
+  * AI-enrichment actions taken
+* Email alert to dev team if >2% of products fail to import.
+
+---
+
+#### **Step 8: Testing & QA**
+
+* Unit tests for mapping logic, AI transformations, and API wrappers.
+* Integration test: run dry import on sample dataset.
+* Manual QA: verify 20 random products end-to-end (pricing, variations, media).
+* Confirm idempotency: re-run import, confirm no duplicates.
+
+---
+
+#### **Step 9: Documentation & Changelog**
+
+* `/docs/setup.md`: API setup, credentials, running imports.
+* `/docs/data-mapping.md`: Sanmar → Exora mapping.
+* `/docs/ai-enrichment.md`: AI enrichment features and toggles.
+* `/CHANGELOG.md`: Updated on every change.
+
+---
+
+### **Phase 2 – Sandbar Catalog Integration**
+
+* Integrate based on **Final Sandbar Catalog** Drive document.
+* Follow the same mapping, AI enrichment, automation, and admin control structure as Phase 1.
+* Implement frontend catalog pages, filters, and variations for staging display.
+
+---
+
+### **Phase 3 – Full Automation & AI Expansion**
+
+* Extend AI features to multiple vendor catalogs.
+* Implement anomaly detection dashboards and automated alerts.
+* Optimize media storage and delivery pipeline.
+* Finalize handover documentation and training.
+
+---
+
+## **Development Standards**
+
+* All work on **staging** only until acceptance.
+* Secure credential handling via `.env`.
+* CI/CD pipeline integration for code review before deploy.
+* Semantic versioning in `/CHANGELOG.md`.
+
+---
+
+**Signature for all correspondence:**
+
+Tim de Vallee
+C: +1-310-453-5555  | O:  +1-855-756-4646
+DigitalBoutique.ai | Digital-Universe.com
+[Tim@DigitalBoutique.ai](mailto:Tim@DigitalBoutique.ai)
+
+---
+
+I can also build you a **`/docs/data-mapping.md` starter file** for the repo so the dev team has the table preformatted for Git markdown and can just fill in any extra Sanmar-specific fields they discover. Would you like me to prepare that next?
