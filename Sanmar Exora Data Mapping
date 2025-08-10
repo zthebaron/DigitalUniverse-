@@ -1,0 +1,66 @@
+# Sanmar → Exora Data Mapping
+
+This document defines the field mapping between **Sanmar API** data fields and **Exora** platform product schema.  
+It is used by the import pipeline to transform and normalize Sanmar data before storing it in Exora.
+
+---
+
+## Table: Field Mappings
+
+| Sanmar Field         | Exora Field              | Type      | Required | Notes                                           |
+|----------------------|--------------------------|-----------|----------|-------------------------------------------------|
+| `Id`                 | `product_id`             | string    | Yes      | Primary key for upserts                         |
+| `Sku`                | `sku`                    | string    | Yes      | Unique per variant                              |
+| `Name`               | `title`                  | string    | Yes      | Normalize via AI                                |
+| `DescriptionHtml`    | `description_html`       | HTML      | Yes      | Sanitize & allow basic tags                     |
+| `Brand`              | `brand`                  | string    | Optional |                                                 |
+| `CategoryPath`       | `category`               | array     | Yes      | Split by `/`; auto-map unknowns via AI          |
+| `Tags`               | `tags`                   | array     | Optional | Derived from attributes where applicable        |
+| `BasePrice`          | `price`                  | number    | Yes      | Currency configurable                           |
+| `SalePrice`          | `sale_price`             | number    | Optional |                                                 |
+| `InventoryQuantity`  | `inventory_qty`          | number    | Yes      |                                                 |
+| `VariantId`          | `variant_id`             | string    | Optional | Empty for simple products                       |
+| `Color`              | `attributes.color`       | string    | Optional |                                                 |
+| `Size`               | `attributes.size`        | string    | Optional |                                                 |
+| `Material`           | `attributes.material`    | string    | Optional |                                                 |
+| `Images[]`           | `image_urls[]`           | array     | Optional | Download → CDN; generate alt text if missing    |
+| `Barcode`            | `barcode`                | string    | Optional |                                                 |
+| `Slug` (if provided) | `slug`                   | string    | Optional | Else generate from title                        |
+| `Msrp`               | `msrp`                   | number    | Optional |                                                 |
+| `CountryOfOrigin`    | `country_of_origin`      | string    | Optional |                                                 |
+| `Hazmat`             | `hazmat`                 | bool      | Optional |                                                 |
+
+---
+
+## AI Enrichment Fields
+
+The following fields can be generated or normalized by AI when missing or inconsistent:
+
+- `title` — normalize casing, remove vendor suffixes/prefixes.
+- `category` — auto-map unknown categories to closest match in Exora taxonomy.
+- `meta_title` — 50–60 character SEO title.
+- `meta_description` — 150–160 character SEO description.
+- `image_alt_text` — descriptive alt text for each product image.
+- `tags` — derived from attributes, description, and category.
+
+---
+
+## Mapping Rules
+
+1. **Idempotency**: Matching is always by `product_id` (Sanmar `Id`).
+2. **Field Locking**: Certain fields in Exora can be locked to prevent overwrite.
+3. **Data Sanitization**: All HTML in descriptions must be stripped of unsafe tags.
+4. **Currency Handling**: `price` and `sale_price` are assumed to be in USD unless specified.
+5. **Fallbacks**:
+   - If `slug` is missing, generate from `title`.
+   - If `image_urls[]` is empty, assign placeholder image.
+   - If `category` path is incomplete, append "Miscellaneous".
+
+---
+
+## Revision History
+
+| Date       | Author         | Change Summary |
+|------------|----------------|----------------|
+| 2025-08-09 | Tim de Vallee  | Initial version with Sanmar field mapping |
+
